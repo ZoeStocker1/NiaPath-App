@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -136,7 +138,28 @@ export default function FloatingChat({ recommendation, session, devMode }: Float
                       : "bg-muted text-foreground"
                   )}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  {message.role === 'user' ? (
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  ) : (
+                    <ReactMarkdown
+                      className="text-sm prose prose-sm dark:prose-invert max-w-none
+                        prose-headings:text-foreground prose-headings:font-semibold
+                        prose-p:text-foreground prose-p:my-1
+                        prose-a:text-primary prose-a:underline
+                        prose-strong:text-foreground prose-strong:font-semibold
+                        prose-code:text-primary prose-code:bg-background/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+                        prose-pre:bg-background prose-pre:border prose-pre:border-border prose-pre:my-2
+                        prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground
+                        prose-ul:my-1 prose-ol:my-1 prose-li:text-foreground
+                        prose-table:border prose-table:border-border prose-table:rounded-lg prose-table:overflow-hidden
+                        prose-th:bg-muted prose-th:text-foreground prose-th:font-semibold prose-th:p-2
+                        prose-td:text-foreground prose-td:p-2 prose-td:border-t prose-td:border-border
+                        [&_table]:w-full [&_table]:overflow-x-auto [&_pre]:overflow-x-auto"
+                      remarkPlugins={[remarkGfm]}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  )}
                 </div>
               </div>
             ))}
