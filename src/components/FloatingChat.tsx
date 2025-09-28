@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -92,114 +93,122 @@ export default function FloatingChat({ recommendation, session, devMode }: Float
       {/* Chat Panel */}
       <div
         className={cn(
-          "fixed bottom-6 right-6 w-96 h-[600px] bg-background border border-border rounded-2xl shadow-2xl z-50",
-          "flex flex-col transition-all duration-300",
-          "max-[640px]:w-[calc(100vw-3rem)] max-[640px]:right-6",
-          isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"
+          "fixed inset-0 flex items-center justify-center z-50",
+          isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none",
+          "transition-all duration-300"
         )}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold text-foreground">Career Assistant</h3>
+        <div
+          className={cn(
+        "w-[90vw] h-[90vh] bg-background border border-border rounded-2xl shadow-2xl flex flex-col",
+        "max-[640px]:w-[calc(100vw-2rem)] max-[640px]:h-[calc(100vh-2rem)]"
+          )}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center gap-2">
+          <MessageCircle className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold text-foreground">Career Guide</h3>
+        </div>
+        <Button
+          onClick={() => setIsOpen(false)}
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8"
+        >
+          <X className="h-4 w-4" />
+        </Button>
           </div>
-          <Button
-            onClick={() => setIsOpen(false)}
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8"
+
+          {/* Messages */}
+          <ScrollArea className="flex-1 p-4">
+        <div className="space-y-4">
+          {messages.length === 0 && (
+            <div className="text-center text-muted-foreground py-8">
+          <p className="text-sm">Ask me anything about your career recommendations!</p>
+            </div>
+          )}
+          {messages.map((message, index) => (
+            <div
+          key={index}
+          className={cn(
+            "flex",
+            message.role === 'user' ? "justify-end" : "justify-start"
+          )}
+            >
+          <div
+            className={cn(
+              "max-w-[80%] rounded-xl px-4 py-2",
+              message.role === 'user'
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted text-foreground"
+            )}
           >
-            <X className="h-4 w-4" />
+            {message.role === 'user' ? (
+              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+            ) : (
+              <ReactMarkdown
+                className="prose dark:prose-invert max-w-none
+                  prose-p:text-foreground prose-p:my-4
+                  prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight prose-headings:mb-4 prose-h1:text-4xl prose-h1:mb-6 prose-h1:border-b prose-h1:pb-2 prose-h2:text-3xl prose-h2:mb-5 prose-h2:border-b prose-h2:pb-2 prose-h3:text-2xl prose-h3:mb-4 prose-h4:text-xl prose-h4:mb-3 prose-h5:text-lg prose-h5:mb-2 prose-h6:text-base prose-h6:mb-1
+                  prose-a:text-primary prose-a:underline
+                  prose-strong:text-foreground prose-strong:font-semibold
+                  prose-code:text-primary prose-code:bg-background/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+                  prose-pre:bg-background prose-pre:border prose-pre:border-border prose-pre:my-2
+                  prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground
+                  prose-ul:my-1 prose-ol:my-1 prose-li:text-foreground
+                  prose-table:border prose-table:border-border prose-table:rounded-lg prose-table:overflow-hidden prose-table:p-4
+                  prose-th:bg-muted prose-th:text-foreground prose-th:font-semibold prose-th:p-4
+                  prose-td:text-foreground prose-td:p-4 prose-td:border-t prose-td:border-border
+                  [&_table]:w-full [&_table]:overflow-x-auto [&_pre]:overflow-x-auto"
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw]}
+              >
+                {message.content}
+              </ReactMarkdown>
+
+            )}
+          </div>
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex justify-start">
+          <div className="bg-muted rounded-xl px-4 py-3">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]" />
+              <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]" />
+              <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" />
+            </div>
+          </div>
+            </div>
+          )}
+        </div>
+          </ScrollArea>
+
+          {/* Input */}
+          <div className="p-4 border-t">
+        <div className="flex gap-2">
+          <Input
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type your message..."
+            disabled={isLoading}
+            className="flex-1"
+          />
+          <Button
+            onClick={handleSendMessage}
+            disabled={isLoading || !newMessage.trim()}
+            size="icon"
+            className="h-10 w-10"
+          >
+            {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+          <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
-
-        {/* Messages */}
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-4">
-            {messages.length === 0 && (
-              <div className="text-center text-muted-foreground py-8">
-                <p className="text-sm">Ask me anything about your career recommendations!</p>
-              </div>
-            )}
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={cn(
-                  "flex",
-                  message.role === 'user' ? "justify-end" : "justify-start"
-                )}
-              >
-                <div
-                  className={cn(
-                    "max-w-[80%] rounded-xl px-4 py-2",
-                    message.role === 'user'
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground"
-                  )}
-                >
-                  {message.role === 'user' ? (
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                  ) : (
-                    <ReactMarkdown
-                      className="text-sm prose prose-sm dark:prose-invert max-w-none
-                        prose-headings:text-foreground prose-headings:font-semibold
-                        prose-p:text-foreground prose-p:my-1
-                        prose-a:text-primary prose-a:underline
-                        prose-strong:text-foreground prose-strong:font-semibold
-                        prose-code:text-primary prose-code:bg-background/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-                        prose-pre:bg-background prose-pre:border prose-pre:border-border prose-pre:my-2
-                        prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground
-                        prose-ul:my-1 prose-ol:my-1 prose-li:text-foreground
-                        prose-table:border prose-table:border-border prose-table:rounded-lg prose-table:overflow-hidden
-                        prose-th:bg-muted prose-th:text-foreground prose-th:font-semibold prose-th:p-2
-                        prose-td:text-foreground prose-td:p-2 prose-td:border-t prose-td:border-border
-                        [&_table]:w-full [&_table]:overflow-x-auto [&_pre]:overflow-x-auto"
-                      remarkPlugins={[remarkGfm]}
-                    >
-                      {message.content}
-                    </ReactMarkdown>
-                  )}
-                </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-muted rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]" />
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]" />
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-
-        {/* Input */}
-        <div className="p-4 border-t">
-          <div className="flex gap-2">
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type your message..."
-              disabled={isLoading}
-              className="flex-1"
-            />
-            <Button
-              onClick={handleSendMessage}
-              disabled={isLoading || !newMessage.trim()}
-              size="icon"
-              className="h-10 w-10"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
           </div>
         </div>
       </div>

@@ -19,10 +19,15 @@ interface Alternative {
   explanation: string;
 }
 
-interface RecommendationData {
+interface Recommendation {
   title: string;
+  score: number;
   explanation: string;
   recommended_degrees: RecommendedDegree[];
+}
+
+interface RecommendationData {
+  recommendation: Recommendation;
   alternatives?: Alternative[];
 }
 
@@ -79,11 +84,11 @@ export default function Recommendation() {
         user: userProfile,
         recommendation: {
           career_id: 123, // You may need to get this from your actual data
-          title: recommendation.title,
+          title: recommendation.recommendation.title,
           description: "", // Add if available in your recommendation data
           score: 87.5, // Add if available in your recommendation data
-          explanation: recommendation.explanation,
-          recommended_degrees: recommendation.recommended_degrees
+          explanation: recommendation.recommendation.explanation,
+          recommended_degrees: recommendation.recommendation.recommended_degrees
         },
         alternatives: recommendation.alternatives?.map((alt, index) => ({
           career_id: 456 + index, // You may need to get this from your actual data
@@ -235,22 +240,22 @@ export default function Recommendation() {
                 <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 border-b">
                   <CardTitle className="flex items-center text-2xl">
                     <Award className="w-6 h-6 mr-3 text-primary" />
-                    {recommendation.title}
+                    {recommendation.recommendation.title}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
                   <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                    {recommendation.explanation}
+                    {recommendation.recommendation.explanation}
                   </p>
 
-                  {recommendation.recommended_degrees && recommendation.recommended_degrees.length > 0 && (
+                  {recommendation.recommendation.recommended_degrees && recommendation.recommendation.recommended_degrees.length > 0 && (
                     <div>
                       <h3 className="font-semibold text-lg mb-4 flex items-center">
                         <BookOpen className="w-5 h-5 mr-2 text-secondary" />
                         Recommended Degrees
                       </h3>
                       <div className="grid gap-3">
-                        {recommendation.recommended_degrees.map((degree, index) => (
+                        {recommendation.recommendation.recommended_degrees.map((degree, index) => (
                           <div key={index} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
                             <div>
                               <h4 className="font-medium text-foreground">{degree.title}</h4>
