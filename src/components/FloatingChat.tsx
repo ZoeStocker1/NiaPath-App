@@ -31,7 +31,7 @@ export default function FloatingChat({ recommendation, session, devMode }: Float
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://plnpaertqowvkcvbpawj.supabase.co/functions/v1/chat-llm', {
+      const response = await fetch('https://plnpaertqowvkcvbpawj.supabase.co/functions/v1/rec-chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
