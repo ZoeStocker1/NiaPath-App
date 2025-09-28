@@ -22,7 +22,7 @@ export const Header = () => {
             className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent cursor-pointer"
             onClick={() => navigate('/')}
           >
-            RecommendMe
+            NiaPath
           </h1>
           
           {(user || devMode) && (
