@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Sparkles, TrendingUp, Award, BookOpen } from 'lucide-react';
+import { Loader2, Sparkles, TrendingUp, Award, BookOpen, Download } from 'lucide-react';
 
 interface RecommendedDegree {
   title: string;
@@ -30,6 +30,113 @@ export default function Recommendation() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<RecommendationData | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Fetch user profile when component mounts
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (devMode) {
+        // Use test user data in dev mode
+        setUserProfile({
+          id: "d3c25e6a-71a0-4b0d-a125-8e0731c06a8b",
+          full_name: "Test User",
+          age: 18,
+          gender: "Male",
+          location: "Nairobi"
+        });
+      } else if (user) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (data) {
+          setUserProfile({
+            id: user.id,
+            full_name: data.full_name || "User",
+            age: data.age || 18,
+            gender: data.gender || "Not specified",
+            location: data.location || "Not specified"
+          });
+        }
+      }
+    };
+
+    fetchUserProfile();
+  }, [user, devMode]);
+
+  const handleDownloadReport = async () => {
+    if (!recommendation || !userProfile) return;
+
+    setDownloadingPdf(true);
+    
+    try {
+      // Prepare the request body with the exact structure the API expects
+      const requestBody = {
+        user: userProfile,
+        recommendation: {
+          career_id: 123, // You may need to get this from your actual data
+          title: recommendation.title,
+          description: "", // Add if available in your recommendation data
+          score: 87.5, // Add if available in your recommendation data
+          explanation: recommendation.explanation,
+          recommended_degrees: recommendation.recommended_degrees
+        },
+        alternatives: recommendation.alternatives?.map((alt, index) => ({
+          career_id: 456 + index, // You may need to get this from your actual data
+          title: alt.title,
+          score: alt.score,
+          explanation: alt.explanation,
+          recommended_degrees: [] // Add if available in your alternative data
+        })) || []
+      };
+
+      // Call the PDF generation endpoint
+      const response = await fetch('https://plnpaertqowvkcvbpawj.supabase.co/functions/v1/rec-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': devMode ? '' : `Bearer ${session?.access_token}`,
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsbnBhZXJ0cW93dmtjdmJwYXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5NjQyNzMsImV4cCI6MjA3NDU0MDI3M30.13yRodl7va76ODofo5BQ-dhmt5k-YARxkD1vRzlfIRg'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF report');
+      }
+
+      // Get the PDF blob
+      const blob = await response.blob();
+      
+      // Create a download link and trigger download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'career_report.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Report Downloaded!",
+        description: "Your career report has been downloaded successfully.",
+      });
+
+    } catch (error: any) {
+      console.error('Error downloading report:', error);
+      toast({
+        title: "Download Failed",
+        description: error.message || "Failed to download the report. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   const handleGetRecommendation = async () => {
     setLoading(true);
@@ -187,6 +294,29 @@ export default function Recommendation() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Download Report Button */}
+              <div className="mt-8 text-center">
+                <Button
+                  onClick={handleDownloadReport}
+                  disabled={downloadingPdf}
+                  variant="default"
+                  size="lg"
+                  className="shadow-md"
+                >
+                  {downloadingPdf ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Generating Report...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-5 h-5 mr-2" />
+                      Download Report
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           )}
 
