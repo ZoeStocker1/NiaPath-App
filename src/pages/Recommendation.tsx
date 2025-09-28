@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Sparkles, TrendingUp, Award, BookOpen, Download } from 'lucide-react';
+import FloatingChat from '@/components/FloatingChat';
 
 interface RecommendedDegree {
   title: string;
@@ -332,6 +333,13 @@ export default function Recommendation() {
             </div>
           )}
         </div>
+        
+        {/* Floating Chat Assistant */}
+        <FloatingChat 
+          recommendation={recommendation} 
+          session={session}
+          devMode={devMode}
+        />
       </div>
     </div>
   );
