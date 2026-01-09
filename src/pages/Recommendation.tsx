@@ -1,12 +1,19 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Sparkles, TrendingUp, Award, BookOpen, Download } from 'lucide-react';
-import FloatingChat from '@/components/FloatingChat';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Loader2,
+  Sparkles,
+  TrendingUp,
+  Award,
+  BookOpen,
+  Download,
+} from "lucide-react";
+import FloatingChat from "@/components/FloatingChat";
 
 interface RecommendedDegree {
   title: string;
@@ -35,7 +42,8 @@ export default function Recommendation() {
   const { user, session, devMode } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [recommendation, setRecommendation] = useState<RecommendationData | null>(null);
+  const [recommendation, setRecommendation] =
+    useState<RecommendationData | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
@@ -49,22 +57,22 @@ export default function Recommendation() {
           full_name: "Test User",
           age: 18,
           gender: "Male",
-          location: "Nairobi"
+          location: "Nairobi",
         });
       } else if (user) {
         const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
           .single();
-        
+
         if (data) {
           setUserProfile({
             id: user.id,
             full_name: data.full_name || "User",
             age: data.age || 18,
             gender: data.gender || "Not specified",
-            location: data.location || "Not specified"
+            location: data.location || "Not specified",
           });
         }
       }
@@ -77,7 +85,7 @@ export default function Recommendation() {
     if (!recommendation || !userProfile) return;
 
     setDownloadingPdf(true);
-    
+
     try {
       // Prepare the request body with the exact structure the API expects
       const requestBody = {
@@ -88,40 +96,46 @@ export default function Recommendation() {
           description: "", // Add if available in your recommendation data
           score: 87.5, // Add if available in your recommendation data
           explanation: recommendation.recommendation.explanation,
-          recommended_degrees: recommendation.recommendation.recommended_degrees
+          recommended_degrees:
+            recommendation.recommendation.recommended_degrees,
         },
-        alternatives: recommendation.alternatives?.map((alt, index) => ({
-          career_id: 456 + index, // You may need to get this from your actual data
-          title: alt.title,
-          score: alt.score,
-          explanation: alt.explanation,
-          recommended_degrees: [] // Add if available in your alternative data
-        })) || []
+        alternatives:
+          recommendation.alternatives?.map((alt, index) => ({
+            career_id: 456 + index, // You may need to get this from your actual data
+            title: alt.title,
+            score: alt.score,
+            explanation: alt.explanation,
+            recommended_degrees: [], // Add if available in your alternative data
+          })) || [],
       };
 
       // Call the PDF generation endpoint
-      const response = await fetch('https://plnpaertqowvkcvbpawj.supabase.co/functions/v1/rec-report', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': devMode ? '' : `Bearer ${session?.access_token}`,
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsbnBhZXJ0cW93dmtjdmJwYXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5NjQyNzMsImV4cCI6MjA3NDU0MDI3M30.13yRodl7va76ODofo5BQ-dhmt5k-YARxkD1vRzlfIRg'
-        },
-        body: JSON.stringify(requestBody)
-      });
+      const response = await fetch(
+        "https://plnpaertqowvkcvbpawj.supabase.co/functions/v1/rec-report",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: devMode ? "" : `Bearer ${session?.access_token}`,
+            apikey:
+              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsbnBhZXJ0cW93dmtjdmJwYXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5NjQyNzMsImV4cCI6MjA3NDU0MDI3M30.13yRodl7va76ODofo5BQ-dhmt5k-YARxkD1vRzlfIRg",
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to generate PDF report');
+        throw new Error("Failed to generate PDF report");
       }
 
       // Get the PDF blob
       const blob = await response.blob();
-      
+
       // Create a download link and trigger download
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = 'career_report.pdf';
+      link.download = "career_report.pdf";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -131,12 +145,12 @@ export default function Recommendation() {
         title: "Report Downloaded!",
         description: "Your career report has been downloaded successfully.",
       });
-
     } catch (error: any) {
-      console.error('Error downloading report:', error);
+      console.error("Error downloading report:", error);
       toast({
         title: "Download Failed",
-        description: error.message || "Failed to download the report. Please try again.",
+        description:
+          error.message || "Failed to download the report. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -146,15 +160,15 @@ export default function Recommendation() {
 
   const handleGetRecommendation = async () => {
     setLoading(true);
-    
+
     try {
       let response;
-      
+
       if (devMode) {
         // Dev mode: call function with test user_id
-        response = await supabase.functions.invoke('get-recommendation', {
-          body: { 
-            user_id: "d3c25e6a-71a0-4b0d-a125-8e0731c06a8b" 
+        response = await supabase.functions.invoke("get-recommendation", {
+          body: {
+            user_id: "d3c25e6a-71a0-4b0d-a125-8e0731c06a8b",
           },
         });
       } else {
@@ -167,13 +181,15 @@ export default function Recommendation() {
           });
           return;
         }
-
-        response = await supabase.functions.invoke('get-recommendation', {
-          body: {},
+        // https://uxabftbphomuhputdrrc.supabase.co/functions/v1/get-recommendation
+        response = await supabase.functions.invoke("get-recommendation", {
+          body: {
+            // Pass the profile ID here so the function knows who to score
+            profile_id: session.user.id,
+          },
           headers: {
             Authorization: `Bearer ${session.access_token}`,
-            apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsbnBhZXJ0cW93dmtjdmJwYXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5NjQyNzMsImV4cCI6MjA3NDU0MDI3M30.13yRodl7va76ODofo5BQ-dhmt5k-YARxkD1vRzlfIRg'
-          }
+          },
         });
       }
 
@@ -182,17 +198,17 @@ export default function Recommendation() {
       }
 
       setRecommendation(response.data);
-      
+
       toast({
         title: "Recommendation Generated!",
         description: "Your personalized career recommendation is ready.",
       });
-
     } catch (error: any) {
-      console.error('Error getting recommendation:', error);
+      console.error("Error getting recommendation:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to get recommendation. Please try again.",
+        description:
+          error.message || "Failed to get recommendation. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -209,9 +225,10 @@ export default function Recommendation() {
               Career Recommendations
             </h1>
             <p className="text-lg text-muted-foreground mb-8">
-              Discover personalized career paths based on your interests and academic strengths
+              Discover personalized career paths based on your interests and
+              academic strengths
             </p>
-            
+
             <Button
               onClick={handleGetRecommendation}
               disabled={loading}
@@ -248,58 +265,77 @@ export default function Recommendation() {
                     {recommendation.recommendation.explanation}
                   </p>
 
-                  {recommendation.recommendation.recommended_degrees && recommendation.recommendation.recommended_degrees.length > 0 && (
-                    <div>
-                      <h3 className="font-semibold text-lg mb-4 flex items-center">
-                        <BookOpen className="w-5 h-5 mr-2 text-secondary" />
-                        Recommended Degrees
-                      </h3>
-                      <div className="grid gap-3">
-                        {recommendation.recommendation.recommended_degrees.map((degree, index) => (
-                          <div key={index} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
-                            <div>
-                              <h4 className="font-medium text-foreground">{degree.title}</h4>
-                              <p className="text-sm text-muted-foreground">{degree.university}</p>
-                            </div>
-                            <Badge variant="secondary" className="ml-4">
-                              Recommended
-                            </Badge>
-                          </div>
-                        ))}
+                  {recommendation.recommendation.recommended_degrees &&
+                    recommendation.recommendation.recommended_degrees.length >
+                      0 && (
+                      <div>
+                        <h3 className="font-semibold text-lg mb-4 flex items-center">
+                          <BookOpen className="w-5 h-5 mr-2 text-secondary" />
+                          Recommended Degrees
+                        </h3>
+                        <div className="grid gap-3">
+                          {recommendation.recommendation.recommended_degrees.map(
+                            (degree, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border"
+                              >
+                                <div>
+                                  <h4 className="font-medium text-foreground">
+                                    {degree.title}
+                                  </h4>
+                                  <p className="text-sm text-muted-foreground">
+                                    {degree.university}
+                                  </p>
+                                </div>
+                                <Badge variant="secondary" className="ml-4">
+                                  Recommended
+                                </Badge>
+                              </div>
+                            )
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </CardContent>
               </Card>
 
               {/* Alternative Careers */}
-              {recommendation.alternatives && recommendation.alternatives.length > 0 && (
-                <Card className="shadow-md">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-xl">
-                      <TrendingUp className="w-5 h-5 mr-3 text-accent" />
-                      Alternative Careers
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-4">
-                      {recommendation.alternatives.map((alternative, index) => (
-                        <div key={index} className="p-4 bg-card border rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-semibold text-foreground">{alternative.title}</h4>
-                            <Badge variant="outline" className="ml-2">
-                              Score: {alternative.score}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground leading-relaxed">
-                            {alternative.explanation}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              {recommendation.alternatives &&
+                recommendation.alternatives.length > 0 && (
+                  <Card className="shadow-md">
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-xl">
+                        <TrendingUp className="w-5 h-5 mr-3 text-accent" />
+                        Alternative Careers
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-4">
+                        {recommendation.alternatives.map(
+                          (alternative, index) => (
+                            <div
+                              key={index}
+                              className="p-4 bg-card border rounded-lg"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-semibold text-foreground">
+                                  {alternative.title}
+                                </h4>
+                                <Badge variant="outline" className="ml-2">
+                                  Score: {alternative.score}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground leading-relaxed">
+                                {alternative.explanation}
+                              </p>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
               {/* Download Report Button */}
               <div className="mt-8 text-center">
@@ -331,17 +367,20 @@ export default function Recommendation() {
               <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center">
                 <Sparkles className="w-12 h-12 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Ready to Discover Your Path?</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                Ready to Discover Your Path?
+              </h3>
               <p className="text-muted-foreground">
-                Click the button above to get your personalized career recommendation
+                Click the button above to get your personalized career
+                recommendation
               </p>
             </div>
           )}
         </div>
-        
+
         {/* Floating Chat Assistant */}
-        <FloatingChat 
-          recommendation={recommendation} 
+        <FloatingChat
+          recommendation={recommendation}
           session={session}
           devMode={devMode}
         />

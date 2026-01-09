@@ -34,12 +34,12 @@ export default function FloatingChat({ recommendation, session, devMode }: Float
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://plnpaertqowvkcvbpawj.supabase.co/functions/v1/rec-chat', {
+      const response = await fetch('https://uxabftbphomuhputdrrc.supabase.co/functions/v1/rec-chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': devMode ? '' : `Bearer ${session?.access_token}`,
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsbnBhZXJ0cW93dmtjdmJwYXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5NjQyNzMsImV4cCI6MjA3NDU0MDI3M30.13yRodl7va76ODofo5BQ-dhmt5k-YARxkD1vRzlfIRg'
+          // 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsbnBhZXJ0cW93dmtjdmJwYXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5NjQyNzMsImV4cCI6MjA3NDU0MDI3M30.13yRodl7va76ODofo5BQ-dhmt5k-YARxkD1vRzlfIRg'
         },
         body: JSON.stringify({
           recOutput: recommendation,
