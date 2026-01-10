@@ -14,6 +14,7 @@ import {
   Download,
 } from "lucide-react";
 import FloatingChat from "@/components/FloatingChat";
+import { SUPABASE_PUBLISHABLE_KEY } from "@/integrations/supabase/client";
 
 interface RecommendedDegree {
   title: string;
@@ -30,6 +31,7 @@ interface Recommendation {
   title: string;
   score: number;
   explanation: string;
+  description: string; // Added description field
   recommended_degrees: RecommendedDegree[];
 }
 
@@ -111,7 +113,7 @@ export default function Recommendation() {
 
       // Call the PDF generation endpoint
       const response = await fetch(
-        "https://plnpaertqowvkcvbpawj.supabase.co/functions/v1/rec-report",
+        "https://uxabftbphomuhputdrrc.supabase.co/functions/v1/rec-report",
         {
           method: "POST",
           headers: {
@@ -181,23 +183,27 @@ export default function Recommendation() {
           });
           return;
         }
+        const requestBody= { "profile_id":"227c8e1f-cd3b-4ff0-8534-63fffd39f7cd" };
         // https://uxabftbphomuhputdrrc.supabase.co/functions/v1/get-recommendation
-        response = await supabase.functions.invoke("get-recommendation", {
-          body: {
-            // Pass the profile ID here so the function knows who to score
-            profile_id: session.user.id,
-          },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
+        response = await fetch(`https://uxabftbphomuhputdrrc.supabase.co/functions/v1/get-recommendation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
       }
 
       if (response.error) {
         throw response.error;
       }
-
-      setRecommendation(response.data);
+      const data = await response.json();
+      console.log("Recommendation data:", data);
+      setRecommendation(data);
 
       toast({
         title: "Recommendation Generated!",
@@ -264,10 +270,12 @@ export default function Recommendation() {
                   <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
                     {recommendation.recommendation.explanation}
                   </p>
+                  <p className="text-md text-muted-foreground mb-6 leading-relaxed">
+                    {recommendation.recommendation.description} {/* Display description */}
+                  </p>
 
                   {recommendation.recommendation.recommended_degrees &&
-                    recommendation.recommendation.recommended_degrees.length >
-                      0 && (
+                    recommendation.recommendation.recommended_degrees.length > 0 && (
                       <div>
                         <h3 className="font-semibold text-lg mb-4 flex items-center">
                           <BookOpen className="w-5 h-5 mr-2 text-secondary" />
