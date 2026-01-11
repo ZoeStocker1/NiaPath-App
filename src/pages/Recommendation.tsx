@@ -19,6 +19,8 @@ import {
   Trophy,
 } from "lucide-react";
 import FloatingChat from "@/components/FloatingChat";
+import { pdf } from "@react-pdf/renderer";
+import CareerReport from "@/components/Report";
 
 export default function Recommendation() {
   const { user, session, devMode } = useAuth();
@@ -91,14 +93,23 @@ export default function Recommendation() {
         }),
       });
 
-      if (!response.ok) throw new Error("PDF generation failed.");
-      const blob = await response.blob();
+      if (!response.ok) throw new Error("Failed to fetch report data.");
+
+      const data = await response.json();
+
+      // Generate PDF Blob using @react-pdf/renderer
+      const blob = await pdf(<CareerReport data={data} />).toBlob();
+
+      // Trigger download
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${userProfile.full_name.replace(/\s+/g, '_')}_Career_Roadmap.pdf`;
+      link.download = `${userProfile.full_name.replace(/\s+/g, "_")}_Career_Roadmap.pdf`;
       link.click();
-    } catch (error: any) {
+
+      // Clean up URL object
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
       toast({ title: "Download Error", description: error.message, variant: "destructive" });
     } finally {
       setDownloadingPdf(false);
