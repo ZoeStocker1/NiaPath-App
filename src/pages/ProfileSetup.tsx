@@ -1,39 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, User, BookOpen, Heart, CheckCircle } from 'lucide-react';
-
-interface Interest {
-  id: string;
-  name: string;
-}
-
-interface Subject {
-  id: string;
-  name: string;
-}
-
-interface UserSubject {
-  subject_id: string;
-  grade: string;
-}
+import { 
+  Loader2, 
+  BookOpen, 
+  Heart, 
+  ArrowRight, 
+  Sparkles, 
+  Plus, 
+  Check,
+  Compass,
+  MinusCircle
+} from 'lucide-react';
 
 export default function ProfileSetup() {
   const { user, devMode } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  const [interests, setInterests] = useState<Interest[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [interests, setInterests] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [customInterest, setCustomInterest] = useState("");
+  const [addingInterest, setAddingInterest] = useState(false);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [userSubjects, setUserSubjects] = useState<UserSubject[]>([]);
+  const [userSubjects, setUserSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -45,265 +39,269 @@ export default function ProfileSetup() {
       navigate('/login');
       return;
     }
-    
     loadData();
   }, [currentUserId, devMode, navigate]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      // Load interests and subjects
-      const [interestsResponse, subjectsResponse] = await Promise.all([
+      const [intRes, subRes] = await Promise.all([
         supabase.from('interests').select('*').order('name'),
         supabase.from('academic_subjects').select('*').order('name')
       ]);
+      setInterests(intRes.data || []);
+      setSubjects(subRes.data || []);
 
-      if (interestsResponse.error) throw interestsResponse.error;
-      if (subjectsResponse.error) throw subjectsResponse.error;
-
-      setInterests(interestsResponse.data || []);
-      setSubjects(subjectsResponse.data || []);
-
-      // Load user's existing data if any
       if (currentUserId) {
-        const [userInterestsResponse, userSubjectsResponse] = await Promise.all([
-          supabase
-            .from('user_interests')
-            .select('interest_id')
-            .eq('user_id', currentUserId),
-          supabase
-            .from('user_subjects')
-            .select('subject_id, grade')
-            .eq('user_id', currentUserId)
+        const [uIntRes, uSubRes] = await Promise.all([
+          supabase.from('user_interests').select('interest_id').eq('user_id', currentUserId),
+          supabase.from('user_subjects').select('subject_id, grade').eq('user_id', currentUserId)
         ]);
-
-        if (userInterestsResponse.data) {
-          setSelectedInterests(userInterestsResponse.data.map(ui => ui.interest_id));
-        }
-
-        if (userSubjectsResponse.data) {
-          setUserSubjects(userSubjectsResponse.data);
-        }
+        if (uIntRes.data) setSelectedInterests(uIntRes.data.map(ui => ui.interest_id));
+        if (uSubRes.data) setUserSubjects(uSubRes.data);
       }
-    } catch (error: any) {
-      console.error('Error loading data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load profile data. Please try again.",
-        variant: "destructive",
-      });
+    } catch (e) {
+      toast({ title: "Error", description: "Failed to load preferences.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInterestChange = (interestId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedInterests([...selectedInterests, interestId]);
-    } else {
-      setSelectedInterests(selectedInterests.filter(id => id !== interestId));
-    }
+  const toggleInterest = (id: string) => {
+    setSelectedInterests(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  const handleSubjectGradeChange = (subjectId: string, grade: string) => {
-    const existingSubject = userSubjects.find(us => us.subject_id === subjectId);
-    
-    if (existingSubject) {
-      setUserSubjects(userSubjects.map(us => 
-        us.subject_id === subjectId ? { ...us, grade } : us
-      ));
-    } else {
-      setUserSubjects([...userSubjects, { subject_id: subjectId, grade }]);
+  // Improved Logic: Toggles the grade off if the same grade is clicked again
+  const handleGradeToggle = (subjectId: string, grade: string) => {
+    setUserSubjects(prev => {
+      const existing = prev.find(us => us.subject_id === subjectId);
+      
+      if (existing?.grade === grade) {
+        // Unselect: Remove the subject entirely if the same grade is clicked
+        return prev.filter(us => us.subject_id !== subjectId);
+      }
+      
+      // Select/Update: Replace or add the new grade
+      const filtered = prev.filter(us => us.subject_id !== subjectId);
+      return [...filtered, { subject_id: subjectId, grade }];
+    });
+  };
+
+  const handleAddCustomInterest = async () => {
+    if (!customInterest.trim()) return;
+    setAddingInterest(true);
+    try {
+      const { data, error } = await supabase.from('interests').insert([{ name: customInterest.trim() }]).select();
+      if (error) throw error;
+      if (data?.[0]) {
+        setInterests(prev => [...prev, data[0]]);
+        setSelectedInterests(prev => [...prev, data[0].id]);
+        setCustomInterest("");
+      }
+    } catch (e) {
+      toast({ title: "Error", description: "Could not add interest.", variant: "destructive" });
+    } finally {
+      setAddingInterest(false);
     }
   };
 
   const handleSave = async () => {
-    if (!currentUserId) {
-      toast({
-        title: "Error",
-        description: "User not authenticated",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setSaving(true);
-    
     try {
-      // Clear existing data
       await Promise.all([
         supabase.from('user_interests').delete().eq('user_id', currentUserId),
         supabase.from('user_subjects').delete().eq('user_id', currentUserId)
       ]);
-
-      // Insert new interests
       if (selectedInterests.length > 0) {
-        const interestInserts = selectedInterests.map(interestId => ({
-          user_id: currentUserId,
-          interest_id: interestId
-        }));
-
-        const { error: interestsError } = await supabase
-          .from('user_interests')
-          .insert(interestInserts);
-
-        if (interestsError) throw interestsError;
+        await supabase.from('user_interests').insert(selectedInterests.map(id => ({ user_id: currentUserId, interest_id: id })));
       }
-
-      // Insert new subjects with grades
       if (userSubjects.length > 0) {
-        const subjectInserts = userSubjects.map(us => ({
-          user_id: currentUserId,
-          subject_id: us.subject_id,
-          grade: us.grade
-        }));
-
-        const { error: subjectsError } = await supabase
-          .from('user_subjects')
-          .insert(subjectInserts);
-
-        if (subjectsError) throw subjectsError;
+        await supabase.from('user_subjects').insert(userSubjects.map(us => ({ user_id: currentUserId, ...us })));
       }
-
-      toast({
-        title: "Profile Saved!",
-        description: "Your interests and subjects have been updated successfully.",
-      });
-
+      toast({ title: "Success!", description: "Your journey parameters are set." });
       navigate('/recommendation');
-    } catch (error: any) {
-      console.error('Error saving profile:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save profile. Please try again.",
-        variant: "destructive",
-      });
+    } catch (e) {
+      toast({ title: "Update Failed", variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading profile data...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-[#030712] flex items-center justify-center">
+      <Loader2 className="w-10 h-10 animate-spin text-sky-500" />
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-              Profile Setup
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Tell us about your interests and academic performance to get personalized recommendations
-            </p>
+    <div className="min-h-screen bg-background text-foreground pb-24 font-sans selection:bg-sky-500/30">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-sky-500/5 blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-fuchsia-500/5 blur-[120px]" />
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 pt-20 relative z-10">
+        <header className="mb-16">
+          <div className="flex items-center gap-2 text-sky-400 font-bold tracking-widest text-[10px] uppercase mb-4">
+            <Compass className="w-4 h-4" /> Journey Customization
           </div>
+          <h1 className="text-5xl font-extrabold tracking-tight mb-4 italic">
+            Personalize Your <span className="text-sky-700 dark:text-sky-500">Path</span>
+          </h1>
+          <p className="text-slate-700 dark:text-slate-400 text-lg max-w-xl">
+            Highlight your passions and academic strengths. Leave subjects blank if they don't apply to you.
+          </p>
+        </header>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Interests Section */}
-            <Card className="shadow-elegant">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Heart className="w-5 h-5 mr-2 text-primary" />
-                  Your Interests
-                </CardTitle>
-                <CardDescription>
-                  Select the areas that interest you most
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {interests.map(interest => (
-                    <div key={interest.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`interest-${interest.id}`}
-                        checked={selectedInterests.includes(interest.id)}
-                        onCheckedChange={(checked) => handleInterestChange(interest.id, checked as boolean)}
-                      />
-                      <Label 
-                        htmlFor={`interest-${interest.id}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {interest.name}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Subjects Section */}
-            <Card className="shadow-elegant">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <BookOpen className="w-5 h-5 mr-2 text-secondary" />
-                  Academic Subjects
-                </CardTitle>
-                <CardDescription>
-                  Add your academic subjects and grades
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4 max-h-80 overflow-y-auto">
-                  {subjects.map(subject => {
-                    const userSubject = userSubjects.find(us => us.subject_id === subject.id);
+        {/* Academic Profile Summary Card */}
+        <div className="mb-12">
+          <div className="rounded-3xl bg-white/5 border border-white/10 p-8 shadow-lg backdrop-blur-xl">
+            <h2 className="text-xl font-black text-white uppercase tracking-tight mb-4 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-sky-400" /> Your Academic Profile
+            </h2>
+            <div className="mb-4">
+              <span className="font-bold text-slate-300">Interests:</span>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {selectedInterests.length === 0 ? (
+                  <span className="text-slate-500 italic">No interests selected.</span>
+                ) : (
+                  interests.filter(i => selectedInterests.includes(i.id)).map(i => (
+                    <span key={i.id} className="px-3 py-1 rounded-full bg-sky-500/20 text-sky-400 font-bold text-xs">{i.name}</span>
+                  ))
+                )}
+              </div>
+            </div>
+            <div>
+              <span className="font-bold text-slate-300">Academic Subjects:</span>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {userSubjects.length === 0 ? (
+                  <span className="text-slate-500 italic">No subjects selected.</span>
+                ) : (
+                  userSubjects.map(us => {
+                    const subj = subjects.find(s => s.id === us.subject_id);
                     return (
-                      <div key={subject.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <Label className="text-sm font-medium flex-1">
-                          {subject.name}
-                        </Label>
-                        <Select
-                          value={userSubject?.grade || ""}
-                          onValueChange={(grade) => handleSubjectGradeChange(subject.id, grade)}
-                        >
-                          <SelectTrigger className="w-20">
-                            <SelectValue placeholder="Grade" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="A">A</SelectItem>
-                            <SelectItem value="B">B</SelectItem>
-                            <SelectItem value="C">C</SelectItem>
-                            <SelectItem value="D">D</SelectItem>
-                            <SelectItem value="E">E</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <span key={us.subject_id} className="px-3 py-1 rounded-full bg-fuchsia-500/20 text-fuchsia-400 font-bold text-xs">
+                        {subj?.name || "Subject"}: {us.grade}
+                      </span>
                     );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+                  })
+                )}
+              </div>
+            </div>
           </div>
+        </div>
 
-          <div className="mt-8 text-center">
+        <div className="space-y-20">
+          {/* PASSIONS SECTION */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-sky-500/10 rounded-lg"><Heart className="w-5 h-5 text-sky-500" /></div>
+              <h2 className="text-2xl font-bold tracking-tight uppercase">What sparks your interest?</h2>
+            </div>
+            
+            <div className="flex flex-wrap gap-3">
+              {interests.map(interest => {
+                const isSelected = selectedInterests.includes(interest.id);
+                return (
+                  <button
+                    key={interest.id}
+                    onClick={() => toggleInterest(interest.id)}
+                    className={`px-6 py-3 rounded-full border-2 transition-all duration-300 font-bold flex items-center gap-2 group ${
+                      isSelected 
+                      ? "bg-sky-500 border-sky-400 text-white shadow-[0_10px_20px_-5px_rgba(56,189,248,0.4)]" 
+                      : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:border-white/20"
+                    }`}
+                  >
+                    {isSelected ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4 opacity-40 group-hover:opacity-100" />}
+                    {interest.name}
+                  </button>
+                );
+              })}
+              
+              <div className="flex items-center gap-3 bg-white/5 rounded-full px-4 py-1 border border-white/5">
+                <input
+                  type="text"
+                  placeholder="Custom passion..."
+                  className="bg-transparent border-none text-sm focus:outline-none w-32 font-medium"
+                  value={customInterest}
+                  onChange={(e) => setCustomInterest(e.target.value)}
+                />
+                <Button variant="ghost" size="icon" onClick={handleAddCustomInterest} className="h-8 w-8 hover:text-sky-400">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </section>
+
+          {/* ACADEMICS SECTION */}
+          <section className="space-y-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-fuchsia-500/10 rounded-lg"><BookOpen className="w-5 h-5 text-fuchsia-500" /></div>
+                <h2 className="text-2xl font-bold tracking-tight uppercase">Academic Performance</h2>
+              </div>
+              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                Tap a grade again to unselect
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {subjects.map(subject => {
+                const userSub = userSubjects.find(us => us.subject_id === subject.id);
+                return (
+                  <div 
+                    key={subject.id} 
+                    className={`p-6 rounded-3xl border-2 transition-all duration-500 ${
+                      userSub?.grade 
+                      ? "bg-fuchsia-500/5 border-fuchsia-500/40 shadow-[0_10px_30px_-15px_rgba(217,70,239,0.2)]" 
+                      : "bg-white/5 border-transparent opacity-60 hover:opacity-100"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-6">
+                      <Label className="block text-xs font-black uppercase text-slate-300 tracking-[0.1em]">
+                        {subject.name}
+                      </Label>
+                      {userSub?.grade ? (
+                        <Check className="w-4 h-4 text-fuchsia-500 animate-in zoom-in" />
+                      ) : (
+                        <MinusCircle className="w-4 h-4 text-slate-700" />
+                      )}
+                    </div>
+                    
+                    <div className="flex gap-1.5">
+                      {['A', 'B', 'C', 'D', 'E'].map(g => (
+                        <button
+                          key={g}
+                          onClick={() => handleGradeToggle(subject.id, g)}
+                          className={`flex-1 aspect-square rounded-xl text-sm font-black transition-all ${
+                            userSub?.grade === g 
+                            ? "bg-fuchsia-500 text-white scale-110 shadow-lg" 
+                            : "bg-black/40 text-slate-500 hover:text-white hover:bg-white/10"
+                          }`}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* SUBMIT */}
+          <footer className="pt-10 flex flex-col items-center">
             <Button
               onClick={handleSave}
               disabled={saving || (selectedInterests.length === 0 && userSubjects.length === 0)}
-              variant="hero"
-              size="lg"
+              className="h-20 px-16 rounded-3xl bg-white text-black font-black text-xl hover:bg-sky-500 hover:text-white transition-all hover:scale-105 active:scale-95 group shadow-2xl"
             >
-              {saving ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Saving Profile...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-5 h-5 mr-2" />
-                  Save Profile
-                </>
-              )}
+              GENERATE CAREER PATH <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform" />
             </Button>
-          </div>
+            <p className="mt-6 text-[10px] text-slate-600 font-bold uppercase tracking-[0.5em]">
+              <Sparkles className="inline w-3 h-3 mr-2 text-sky-500" /> AI Engine Ready
+            </p>
+          </footer>
         </div>
       </div>
     </div>
